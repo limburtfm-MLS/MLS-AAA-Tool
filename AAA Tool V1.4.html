@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>95% Calculator</title>
+<style>
+  :root {
+    --bg: #eef3ef;
+    --panel: #ffffff;
+    --ink: #12261c;
+    --muted: #5d7266;
+    --line: #cfdad2;
+    --accent: #1f6b45;
+    --accent-ink: #ffffff;
+    --result-bg: #e2eee6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1a14;
+      --panel: #16241c;
+      --ink: #e6f1ea;
+      --muted: #94ab9c;
+      --line: #2b4034;
+      --accent: #5fc58c;
+      --accent-ink: #08130d;
+      --result-bg: #1d3226;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    flex-direction: column;
+    gap: 24px;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    padding: 20px;
+  }
+  main {
+    width: 100%;
+    max-width: 460px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  p.sub { margin: 0 0 22px; color: var(--muted); font-size: .92rem; }
+  label { display: block; font-size: .9rem; margin-bottom: 6px; color: var(--muted); }
+  input {
+    width: 100%;
+    font: inherit;
+    font-size: 1.25rem;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink);
+  }
+  input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .result {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--result-bg);
+  }
+  .result small { color: var(--muted); display: block; margin-bottom: 4px; }
+  .value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    min-height: 2.4rem;
+  }
+  .error { color: #b3261e; font-size: .9rem; margin-top: 8px; min-height: 1.2em; }
+  @media (prefers-color-scheme: dark) { .error { color: #ff9a92; } }
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--accent);
+    cursor: pointer;
+  }
+  #copy { flex: 1; background: var(--accent); color: var(--accent-ink); }
+  #copy:disabled { opacity: .45; cursor: not-allowed; }
+  #clear { background: transparent; color: var(--accent); }
+
+  .templates {
+    width: 100%;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 760px) { .templates { grid-template-columns: 1fr; } }
+  .col {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .col h2 { font-size: 1rem; margin: 0 0 10px; }
+  .tpl + .tpl { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .tpl-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .tpl-head span { font-size: .8rem; color: var(--muted); }
+  .tpl-head button { padding: 8px 18px; font-size: .92rem; background: var(--accent); color: var(--accent-ink); }
+  textarea {
+    width: 100%;
+    font: inherit;
+    font-size: .78rem;
+    line-height: 1.3;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink);
+    resize: vertical;
+    min-height: 60px;
+  }
+  textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .col .tpl:nth-of-type(3) { margin-top: 24px; padding-top: 24px; border-top: 4px solid var(--accent); }
+  .layout { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .col label { margin-top: 12px; }
+  input.sm { font-size: 1rem; padding: 10px 12px; }
+  .out-row { display: flex; gap: 10px; }
+  .tool-copy { padding: 8px 18px; font-size: .92rem; background: var(--accent); color: var(--accent-ink); }
+  .templates.stack { grid-template-columns: 1fr; max-width: 560px; }
+</style>
+</head>
+<body>
+<div class="layout">
+<main>
+  <h1>95% Calculator</h1>
+  <p class="sub">Paste an amount. The result updates right away.</p>
+
+  <label for="amount">Amount</label>
+  <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 1,250.75" autofocus>
+  <div class="error" id="error" role="alert"></div>
+
+  <div class="result">
+    <small>95% of the amount</small>
+    <div class="value" id="result" aria-live="polite">0.00</div>
+  </div>
+
+  <div class="actions">
+    <button id="copy" disabled>Copy result</button>
+    <button id="clear">Clear</button>
+  </div>
+</main>
+
+<section class="templates">
+  <div class="col">
+    <h2>If Insurance is Progressive</h2>
+    <div class="tpl">
+      <div class="tpl-head"><span>AAA Message</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Hello, 
+
+Kindly consider the proposed offer to fully resolve this matter. In addition, kindly upload the updated PIP Ledger and Declaration Page for this case.
+
+Please be advised that our office address has recently changed to:
+33 Front Street, Suite 307, Hempstead, NY 11550
+
+Also, please see the uploaded file under Supplemental.
+
+Thank you so much, and have a great day!</textarea>
+    </div>
+    <div class="tpl">
+      <div class="tpl-head"><span>V3/EMR Note's</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Updated AAA#.
+Uploaded Initiation Letter.
+Submitted settlement offer.
+Added comments under the settlement offer to notify the respondent of the change of address and to upload the updated PIP Ledger and Declaration Page for this case. 
+Filing date on AAA's Timeline View is different. Followed our date of filing since the Application upload date matches our filing date. And see the uploaded file under Supplemental.</textarea>
+    </div>
+    <div class="tpl">
+      <div class="tpl-head"><span>AAA Message (Backdated)</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Hello, 
+
+Kindly consider the proposed offer to fully resolve this matter. In addition, kindly upload the updated PIP Ledger and Declaration Page for this case.
+
+Please be advised that our office address has recently changed to:
+33 Front Street, Suite 307, Hempstead, NY 11550
+
+Thank you so much, and have a great day!</textarea>
+    </div>
+    <div class="tpl">
+      <div class="tpl-head"><span>V3/EMR Note's (Backdated)</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Updated AAA#.
+Uploaded Initiation Letter.
+Submitted settlement offer.
+Added comments under the settlement offer to notify the respondent of the change of address and to upload the updated PIP Ledger and Declaration Page for this case. 
+Filing date on AAA's Timeline View is different. Followed our date of filing since the Application upload date matches our filing date.</textarea>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>AAA INITIATIONS</h2>
+    <div class="tpl">
+      <div class="tpl-head"><span>AAA Message</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Hello,
+
+Kindly consider the proposed offer to fully resolve this matter.
+
+Please be advised that our office address has recently changed to:
+33 Front Street, Suite 307
+Hempstead, NY 11550
+
+Also, please see the uploaded file under Supplemental.
+
+Thank you so much, and have a great day!</textarea>
+    </div>
+    <div class="tpl">
+      <div class="tpl-head"><span>V3/EMR Note's</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Updated AAA#.
+Uploaded Initiation Letter.
+Submitted settlement offer.
+Added comments under the settlement offer to notify the respondent of the change of address .
+Filing date on AAA's Timeline View is different. Followed our date of filing since the Application upload date matches our filing date.  And see the uploaded file under Supplemental.</textarea>
+    </div>
+    <div class="tpl">
+      <div class="tpl-head"><span>AAA Message (Backdated)</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Hello,
+
+Kindly consider the proposed offer to fully resolve this matter.
+
+Please be advised that our office address has recently changed to:
+33 Front Street, Suite 307
+Hempstead, NY 11550
+
+Thank you so much, and have a great day!</textarea>
+    </div>
+    <div class="tpl">
+      <div class="tpl-head"><span>V3/EMR Note's (Backdated)</span><button class="copy-tpl">Copy</button></div>
+      <textarea>Updated AAA#.
+Uploaded Initiation Letter.
+Submitted settlement offer.
+Added comments under the settlement offer to notify the respondent of the change of address .
+Filing date on AAA's Timeline View is different. Followed our date of filing since the Application upload date matches our filing date.</textarea>
+    </div>
+  </div>
+</section>
+
+<section class="templates stack">
+  <div class="col">
+    <h2>V3 24 Hour Converter</h2>
+    <label for="c1-in">Paste date and time (MM/DD/YYYY hh:mm AM or PM). You can edit the time here.</label>
+    <input class="sm" id="c1-in" type="text" autocomplete="off" placeholder="10/22/2026 02:30 PM">
+    <div class="error" id="c1-err" role="alert"></div>
+    <label for="c1-out">24-hour result</label>
+    <div class="out-row">
+      <input class="sm" id="c1-out" type="text" autocomplete="off" placeholder="10/22/2026 14:30">
+      <button class="tool-copy" data-target="c1-out">Copy</button>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>EMR Time Converter</h2>
+    <label for="c2-in">Paste date and time (MM/DD/YYYY hh:mm, AM or PM is optional)</label>
+    <input class="sm" id="c2-in" type="text" autocomplete="off" placeholder="10/22/2026 9:30">
+    <label for="c2-time">New time (optional), like 9AM or 9:30PM</label>
+    <input class="sm" id="c2-time" type="text" autocomplete="off" placeholder="9AM">
+    <div class="error" id="c2-err" role="alert"></div>
+    <label for="c2-out">12-hour result</label>
+    <div class="out-row">
+      <input class="sm" id="c2-out" type="text" autocomplete="off" placeholder="10/22/2026 09:00 AM">
+      <button class="tool-copy" data-target="c2-out">Copy</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+  const input = document.getElementById('amount');
+  const resultEl = document.getElementById('result');
+  const errorEl = document.getElementById('error');
+  const copyBtn = document.getElementById('copy');
+  const clearBtn = document.getElementById('clear');
+  let plainResult = null;
+
+  // Exact decimal math (no floating-point errors), rounded half up to 2 decimals.
+  function compute95(text) {
+    let s = text.replace(/[^\d.\-]/g, '');   // drop commas, spaces, currency symbols
+    if (s === '' ) return null;
+    let negative = false;
+    if (s.startsWith('-')) { negative = true; s = s.slice(1); }
+    if (s.includes('-') || (s.match(/\./g) || []).length > 1 || s === '.') return 'invalid';
+
+    let [whole, frac = ''] = s.split('.');
+    if (whole === '') whole = '0';
+    const scale = BigInt(10) ** BigInt(frac.length);
+    const n = BigInt(whole + frac);
+
+    // value * 100 = n * 95 / scale  -> round half up
+    const cents = (n * 95n * 2n + scale) / (2n * scale);
+    const intPart = cents / 100n;
+    const decPart = (cents % 100n).toString().padStart(2, '0');
+    return { sign: negative && cents !== 0n ? '-' : '', intPart: intPart.toString(), decPart };
+  }
+
+  function withCommas(digits) {
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function update() {
+    const r = compute95(input.value);
+    errorEl.textContent = '';
+    if (r === null) {
+      resultEl.textContent = '0.00';
+      plainResult = null;
+    } else if (r === 'invalid') {
+      resultEl.textContent = '0.00';
+      plainResult = null;
+      errorEl.textContent = 'That is not a valid number.';
+    } else {
+      plainResult = `${r.sign}${r.intPart}.${r.decPart}`;
+      resultEl.textContent = `${r.sign}${withCommas(r.intPart)}.${r.decPart}`;
+    }
+    copyBtn.disabled = plainResult === null;
+    copyBtn.textContent = 'Copy result';
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const t = document.createElement('textarea');
+      t.value = text;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      t.remove();
+    }
+  }
+
+  copyBtn.addEventListener('click', async () => {
+    if (plainResult === null) return;
+    await copyText(plainResult);
+    copyBtn.textContent = 'Copied!';
+    setTimeout(() => { copyBtn.textContent = 'Copy result'; }, 1500);
+  });
+
+  clearBtn.addEventListener('click', () => { input.value = ''; update(); input.focus(); });
+  input.addEventListener('input', update);
+  document.querySelectorAll('.copy-tpl').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const box = btn.closest('.tpl').querySelector('textarea');
+      await copyText(box.value);
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+  });
+  document.querySelectorAll('.templates textarea').forEach(t => {
+    t.style.height = 'auto';
+    t.style.height = t.scrollHeight + 4 + 'px';
+    t.addEventListener('input', () => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 4 + 'px'; });
+  });
+  const pad2 = n => String(n).padStart(2, '0');
+
+  function parseTime(str) {
+    const t = str.trim();
+    let m = t.match(/^(\d{1,2})(?::(\d{1,2}))?\s*([ap])\.?m?\.?$/i);
+    if (m) {
+      const h12 = Number(m[1]);
+      const min = m[2] ? Number(m[2]) : 0;
+      if (h12 < 1 || h12 > 12 || min > 59) return null;
+      const pm = m[3].toLowerCase() === 'p';
+      return { h: (h12 % 12) + (pm ? 12 : 0), min, mer: pm ? 'PM' : 'AM' };
+    }
+    m = t.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+    if (m) {
+      const h = Number(m[1]);
+      const min = m[2] ? Number(m[2]) : 0;
+      if (h > 23 || min > 59) return null;
+      return { h, min, mer: null };
+    }
+    return null;
+  }
+
+  function fmt(mo, d, y, t) {
+    return pad2(mo) + '/' + pad2(d) + '/' + y + ' ' + pad2(t.h) + ':' + pad2(t.min);
+  }
+
+  // Tool 1: 12-hour to 24-hour
+  const c1In = document.getElementById('c1-in');
+  const c1Out = document.getElementById('c1-out');
+  const c1Err = document.getElementById('c1-err');
+  function convert1() {
+    const v = c1In.value.trim();
+    c1Err.textContent = '';
+    if (!v) { c1Out.value = ''; return; }
+    const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm]?\.?$/);
+    const t = m ? parseTime(m[4] + ':' + m[5] + m[6] + 'M') : null;
+    if (!t) { c1Out.value = ''; c1Err.textContent = 'Use the format MM/DD/YYYY hh:mm AM or PM.'; return; }
+    c1Out.value = fmt(m[1], m[2], m[3], t);
+  }
+  c1In.addEventListener('input', convert1);
+
+  // Tool 2: add the leading zero (and optionally set a new time)
+  const c2In = document.getElementById('c2-in');
+  const c2Time = document.getElementById('c2-time');
+  const c2Out = document.getElementById('c2-out');
+  const c2Err = document.getElementById('c2-err');
+  function convert2() {
+    const v = c2In.value.trim();
+    c2Err.textContent = '';
+    if (!v) { c2Out.value = ''; return; }
+    const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(.+))?$/);
+    if (!m) { c2Out.value = ''; c2Err.textContent = 'Use the format MM/DD/YYYY hh:mm.'; return; }
+    const timeStr = c2Time.value.trim() || m[4] || '';
+    const t = timeStr ? parseTime(timeStr) : null;
+    if (!t) { c2Out.value = ''; c2Err.textContent = timeStr ? 'That time is not valid. Try 9AM or 14:30.' : 'Add a time to the date.'; return; }
+    c2Out.value = pad2(m[1]) + '/' + pad2(m[2]) + '/' + m[3] + ' ' + pad2(t.h % 12 || 12) + ':' + pad2(t.min) + (t.mer ? ' ' + t.mer : '');
+  }
+  c2In.addEventListener('input', convert2);
+  c2Time.addEventListener('input', convert2);
+
+  document.querySelectorAll('.tool-copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const box = document.getElementById(btn.dataset.target);
+      if (!box.value) return;
+      await copyText(box.value);
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>
